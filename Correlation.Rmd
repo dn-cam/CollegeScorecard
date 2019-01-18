@@ -1,0 +1,245 @@
+---
+title: "College-Scorecard"
+author: "Nanditha Sundararajan"
+date: "12/07/2018"
+output:
+  pdf_document: default
+ 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(dbplyr)
+library(modelr)
+```
+
+```{r,include=FALSE}
+col_09_10 <- read.csv("/Users/camelliadebnath/Documents/Academics/Data Management DS 5110/CollegeScorecard_Raw_Data/MERGED2009_10_PP.csv")
+col_11_12 <- read.csv("/Users/camelliadebnath/Documents/Academics/Data Management DS 5110/CollegeScorecard_Raw_Data/MERGED2011_12_PP.csv")
+col_12_13 <- read.csv("/Users/camelliadebnath/Documents/Academics/Data Management DS 5110/CollegeScorecard_Raw_Data/MERGED2012_13_PP.csv")
+col_13_14 <- read.csv("/Users/camelliadebnath/Documents/Academics/Data Management DS 5110/CollegeScorecard_Raw_Data/MERGED2013_14_PP.csv")
+col_14_15 <- read.csv("/Users/camelliadebnath/Documents/Academics/Data Management DS 5110/CollegeScorecard_Raw_Data/MERGED2014_15_PP.csv")
+```
+## 1. Combining the data for 2009-2013   
+
+```{r, warning=FALSE, message=FALSE}
+college_09_10 <- col_09_10 %>%
+  mutate(GRAD_DEBT_MDN = as.numeric(as.character(GRAD_DEBT_MDN)),
+         MD_EARN_WNE_P8 = as.numeric(as.character(MD_EARN_WNE_P8)),
+         "Year" = "2009-10") %>%
+  mutate(DEBT_TO_EARN = GRAD_DEBT_MDN/MD_EARN_WNE_P8)
+```
+
+```{r, warning=FALSE, message=FALSE}
+college_11_12 <- col_11_12 %>%
+  mutate(GRAD_DEBT_MDN = as.numeric(as.character(GRAD_DEBT_MDN)),
+         MD_EARN_WNE_P8 = as.numeric(as.character(MD_EARN_WNE_P8)),
+         "Year" = "2011-12") %>%
+  mutate(DEBT_TO_EARN = GRAD_DEBT_MDN/MD_EARN_WNE_P8)
+```
+
+```{r, warning=FALSE, message=FALSE}
+college_12_13 <- col_12_13 %>%
+  mutate(GRAD_DEBT_MDN = as.numeric(as.character(GRAD_DEBT_MDN)),
+         MD_EARN_WNE_P8 = as.numeric(as.character(MD_EARN_WNE_P8)),
+         "Year" = "2012-13") %>%
+  mutate(DEBT_TO_EARN = GRAD_DEBT_MDN/MD_EARN_WNE_P8)
+```
+
+```{r, warning=FALSE, message=FALSE}
+college_13_14 <- col_13_14 %>%
+  mutate(GRAD_DEBT_MDN = as.numeric(as.character(GRAD_DEBT_MDN)),
+         MD_EARN_WNE_P8 = as.numeric(as.character(MD_EARN_WNE_P8)),
+         "Year" = "2013-14") %>%
+  mutate(DEBT_TO_EARN = GRAD_DEBT_MDN/MD_EARN_WNE_P8)
+```
+
+```{r, warning=FALSE, message=FALSE}
+college_14_15 <- col_14_15 %>%
+  mutate(GRAD_DEBT_MDN = as.numeric(as.character(GRAD_DEBT_MDN)),
+         MD_EARN_WNE_P8 = as.numeric(as.character(MD_EARN_WNE_P8)),
+         "Year" = "2014-15") %>%
+  mutate(DEBT_TO_EARN = GRAD_DEBT_MDN/MD_EARN_WNE_P8)
+```
+
+```{r, warning=FALSE, message=FALSE}
+college_09_15 <- rbind(college_09_10, college_11_12, college_12_13,
+                       college_13_14, college_14_15)
+```
+
+## 2. Partitioning the data into training and test sets  
+
+```{r, message=FALSE, warning=FALSE}
+college_09_15_parts <- resample_partition(college_09_15,
+                                          c(train = 0.6, valid = 0.2, test = 0.2)) 
+
+college_09_15_train_ <- as_tibble(college_09_15_parts$train)
+college_09_15_test_ <- as_tibble(college_09_15_parts$test)
+college_09_15_valid_ <- as_tibble(college_09_15_parts$valid)
+```
+
+## 3. Subsetting variables:
+```{r, message=FALSE, warning=FALSE}
+college_09_15_train <- college_09_15_train_ %>%
+  select(COMPL_RPY_3YR_RT, GRAD_DEBT_MDN,PCTFLOAN, PCTPELL,MD_EARN_WNE_P8, 
+         COSTT4_A, Year, DEBT_TO_EARN, MD_FAMINC) %>%
+  mutate(COMPL_RPY_3YR_RT = as.numeric(as.character(COMPL_RPY_3YR_RT)),
+         GRAD_DEBT_MDN = as.numeric(as.character(GRAD_DEBT_MDN)),
+         MD_EARN_WNE_P8 = as.numeric(as.character(MD_EARN_WNE_P8)),
+         COSTT4_A = as.numeric(as.character(COSTT4_A)), 
+         PCTFLOAN = as.numeric(as.character(PCTFLOAN)),
+         PCTPELL = as.numeric(as.character(PCTPELL)),
+         MD_FAMINC = as.numeric(as.character(MD_FAMINC))) 
+```
+
+## Correlation Coefficients and their respective graphs
+
+```{r, message=FALSE, warning=FALSE}
+college_09_15_train <- college_09_15_train %>%
+  select(COMPL_RPY_3YR_RT, GRAD_DEBT_MDN,
+         PCTFLOAN, PCTPELL, MD_EARN_WNE_P8, 
+         COSTT4_A,Year, DEBT_TO_EARN, 
+         MD_FAMINC)
+
+
+college_09_15_2<-college_09_15_train %>%
+  filter(Year == "2013-14")
+```
+
+```{r, message=FALSE, warning=FALSE}
+#PCTPELL vs 3 YR Repayment Rate
+
+r1<-cor.test(college_09_15_2$PCTPELL,
+             college_09_15_2$COMPL_RPY_3YR_RT,
+             method = "pearson",
+             conf.level = 0.95)
+r1
+```
+
+```{r, message=FALSE, warning=FALSE}
+college_09_15_2 %>%
+  ggplot() +
+  geom_point(aes(x = PCTPELL, y = COMPL_RPY_3YR_RT),
+    color= "darkgreen", alpha = 0.2)+
+  labs(title="% Undergraduate students who received Pell Grants vs. 
+    3-Year Repayment Rate \n for Completers",
+    x="Percentage of undergraduate students who received Pell Grants",
+    y="3-year repayment rate for completers")+ 
+  annotate("text",
+           x=0.75, y=0.9, 
+           label="Correlation Coefficient = -0.70047")
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+#DEBT-EARNINGS vs 3 yr repayment rate:
+r2<-cor.test(college_09_15_2$DEBT_TO_EARN,
+             college_09_15_2$COMPL_RPY_3YR_RT,
+             method = "pearson", 
+             conf.level = 0.95)
+r2 
+```
+
+```{r, message=FALSE, warning=FALSE}
+college_09_15_2 %>%
+  ggplot() +
+  geom_point(aes(x = DEBT_TO_EARN, y = COMPL_RPY_3YR_RT),
+    color= "magenta", alpha = 0.2)+
+  labs(title="Debt to Earnings Ratio vs. \n 3-Year Repayment Rate for Completers",
+    x="Debt to Earnings ratio",
+    y="3-year repayment rate for completers") + 
+  annotate("text", x=1.8, y=0.65, label="Correlation Coefficient = -0.1860051")
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+#COST4A vs 3 Yr repayment rates:
+r3<-cor.test(college_09_15_2$COSTT4_A,
+             college_09_15_2$COMPL_RPY_3YR_RT,
+             method = "pearson",
+             conf.level = 0.95)
+r3
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+college_09_15_2 %>%
+  ggplot() +
+  geom_point(aes(x = COSTT4_A, y = COMPL_RPY_3YR_RT),
+    color= "#660099", alpha = 0.2 )+
+  xlim(c(0, 120000))+
+  labs(title="Cost of Attending the Institute vs.\n 3-Year Repayment Rate for Completers",
+    x="Cost of attending the institute",
+    y="3-year repayment rate for completers")+ 
+  annotate("text",x=95000, y=0.65, label="Correlation Coefficient = 0.3033664")
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Median Earnings vs 3 YR Repayment Rate:
+r4<-corr_coeff<-cor.test(college_09_15_2$MD_EARN_WNE_P8,
+                         college_09_15_2$COMPL_RPY_3YR_RT,
+                         method = "pearson", 
+                         conf.level = 0.95)
+r4
+```
+
+```{r, message=FALSE, warning=FALSE}
+college_09_15_2 %>%
+  ggplot() +
+  geom_point(aes(x = MD_EARN_WNE_P8, y = COMPL_RPY_3YR_RT),
+    color="red", alpha = 0.2)+
+  xlim(c(0, 120000))+
+  labs(title="Median earnings of Federally Aided students after graduation 
+       vs.\n 3-Year Repayment Rate for Completers",
+    x="Median earnings of federally aided students after graduation",
+    y="3-year repayment rate for completers")+
+  annotate("text", x=95000, y=0.65, label="Correlation Coefficient = 0.6578909")
+```
+
+```{r, message=FALSE, warning=FALSE}
+#Median Family Income vs 3 YR Repayment Rate:
+r5<-cor.test(college_09_15_2$MD_FAMINC,
+             college_09_15_2$COMPL_RPY_3YR_RT,
+             method = "pearson", 
+             conf.level = 0.95) 
+r5
+```
+
+```{r, message=FALSE, warning=FALSE}
+college_09_15_2 %>%
+  ggplot() +
+  geom_point(aes(x =MD_FAMINC, y = COMPL_RPY_3YR_RT),
+    color="blue", alpha = 0.2) + 
+  xlim(c(0, 120000))+
+  labs(title="Median Family Income vs.3-Year Repayment Rate for Completers",
+    x="Median Family Income",
+    y="3-year repayment rate for completers")+
+  annotate("text",x=95000, y=0.65,label="Correlation Coefficient = 0.7743165")
+```
+
+```{r, message=FALSE, warning=FALSE}
+# PCTFLOAN vs 3 YR Repayment Rate:
+
+r6<-cor.test(college_09_15_2$PCTFLOAN,
+             college_09_15_2$COMPL_RPY_3YR_RT,
+             method = "pearson", 
+             conf.level = 0.95)
+r6
+```
+
+```{r, message=FALSE, warning=FALSE}
+college_09_15_2 %>%
+  ggplot() +
+  geom_point(aes(x = PCTFLOAN, y = COMPL_RPY_3YR_RT),
+    color="#E69F00" , alpha = 0.2 )+
+  labs(title="Percent of all undergraduate students receiving a federal student 
+    loan vs.\n 3-Year Repayment Rate for Completers",
+    x="Percent of all undergraduate students receiving a federal student loan",
+    y="3-year repayment rate for completers") +
+  annotate("text", x=0.19, y=0.95,label="Correlation Coefficient = -0.2236313 ")
+```
